@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FitnessAI Coach - Personal AI Trainer</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- MediaPipe Pose & Camera CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-wrapper">
+                <span class="brand-icon">⚡</span>
+                <h1>FitnessAI Coach</h1>
+            </div>
+            <div class="header-controls">
+                <select id="exercise_select" class="exercise-dropdown">
+                    <option value="auto">⚡ Auto-Detect Exercise</option>
+                    <option value="bicep_curl">Bicep Curls</option>
+                    <option value="squat">Squats</option>
+                    <option value="pushup">Push-ups</option>
+                    <option value="shoulder_press">Overhead Press</option>
+                    <option value="jumping_jack">Jumping Jacks</option>
+                    <option value="plank">Plank Hold</option>
+                </select>
+                <button id="btn_sound_toggle" class="btn btn-outline" data-muted="false">🔊 Mute Coach</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- Live Video & Visualizer Viewport -->
+        <section class="viewport-card">
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="output_canvas"></canvas>
+
+                <!-- Floating HUD elements -->
+                <div class="hud-overlay">
+                    <div class="hud-pill" id="detected_exercise">⚡ Auto: Detecting...</div>
+                    <div class="hud-pill">Stage: <span id="stage_badge" class="badge badge-idle">IDLE</span></div>
+                </div>
+
+                <div class="form-feedback-bar feedback-good" id="form_feedback">
+                    Stand in camera view to begin workout
+                </div>
+            </div>
+
+            <!-- Workout Session Action Controls -->
+            <div class="control-bar">
+                <button id="btn_start" class="btn btn-primary">▶ Start Workout</button>
+                <button id="btn_pause" class="btn btn-warning hidden">⏸ Pause</button>
+                <button id="btn_reset" class="btn btn-outline">🔄 Reset</button>
+                <button id="btn_finish" class="btn btn-primary">🏁 Finish Workout</button>
+                <button id="btn_history" class="btn btn-outline">📋 History</button>
+            </div>
+        </section>
+
+        <!-- Right Side Live Telemetry & Metrics -->
+        <aside class="sidebar">
+            <div class="telemetry-card rep-display">
+                <div class="label">Total Repetitions</div>
+                <div class="number" id="rep_count">0</div>
+            </div>
+
+            <div class="telemetry-card">
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="m-label">Form Accuracy</div>
+                        <div class="m-val" id="accuracy_val">100%</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Est. Calories</div>
+                        <div class="m-val" id="calories_val">0.0</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Cadence (RPM)</div>
+                        <div class="m-val" id="cadence_val">0</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Active Time</div>
+                        <div class="m-val" id="timer_val">00:00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="telemetry-card gauge-card">
+                <div class="gauge-header">
+                    <span>Joint Angle</span>
+                    <span id="angle_val">0°</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="angle_fill"></div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Workout Summary Modal -->
+    <div id="summary_modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🎉 Workout Complete!</h2>
+                <button id="btn_close_summary" class="btn btn-outline">✕</button>
+            </div>
+            <div class="summary-stats">
+                <div class="metric-item">
+                    <div class="m-label">Exercise</div>
+                    <div class="m-val text-accent" id="sum_exercise">-</div>
+                </div>
+                <div class="metric-item">
+                    <div class="m-label">Total Reps</div>
+                    <div class="m-val" id="sum_reps">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="m-label">Duration</div>
+                    <div class="m-val" id="sum_duration">00:00</div>
+                </div>
+                <div class="metric-item">
+                    <div class="m-label">Calories Burned</div>
+                    <div class="m-val text-accent" id="sum_calories">0.0 kcal</div>
+                </div>
+                <div class="metric-item">
+                    <div class="m-label">Form Accuracy</div>
+                    <div class="m-val" id="sum_accuracy">100%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workout History Modal -->
+    <div id="history_modal" class="modal-backdrop hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>📋 Workout History & Logs</h2>
+                <button id="btn_close_history" class="btn btn-outline">✕</button>
+            </div>
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date / Time</th>
+                            <th>Exercise</th>
+                            <th>Reps</th>
+                            <th>Duration</th>
+                            <th>Calories</th>
+                            <th>Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history_table_body">
+                        <tr><td colspan="6" class="text-center text-muted">No past workouts logged yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button id="btn_clear_history" class="btn btn-danger">Clear History</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        FitnessAI Coach • Created for <a href="https://github.com/asaha0678-hash/FitnessAI-Coach" target="_blank">asaha0678-hash/FitnessAI-Coach</a>
+    </footer>
+
+    <!-- Application Scripts -->
+    <script src="js/pose_math.js"></script>
+    <script src="js/audio_coach.js"></script>
+    <script src="js/exercise_tracker.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
