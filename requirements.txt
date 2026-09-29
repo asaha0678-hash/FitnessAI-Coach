@@ -1,0 +1,6 @@
+# FitnessAI-Coach Dependencies
+# Optional: The application can run with zero dependencies using `python server.py`.
+# If you prefer running with Flask, install the following:
+flask>=2.3.0
+flask-cors>=4.0.0
+numpy>=1.24.0
