@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FitnessAI Coach</title>
+    <link rel="stylesheet" href="static/css/style.css" />
+    <!-- MediaPipe & Camera scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-wrapper">
+                <span class="brand-icon">🏋️‍♂️</span>
+                <h1>FitnessAI Coach</h1>
+            </div>
+            <div class="header-controls">
+                <select id="exercise_select" class="exercise-dropdown">
+                    <option value="auto">⚡ Auto Detect</option>
+                    <option value="bicep_curl">Bicep Curls</option>
+                    <option value="squat">Squats</option>
+                    <option value="pushup">Push‑ups</option>
+                    <option value="shoulder_press">Overhead Press</option>
+                    <option value="jumping_jack">Jumping Jacks</option>
+                    <option value="plank">Plank Hold</option>
+                </select>
+                <button id="btn_sound_toggle" class="btn btn-outline" data-muted="false">🔊 Mute Coach</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- Video / Canvas Card -->
+        <section class="viewport-card">
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="output_canvas"></canvas>
+                <!-- HUD overlay -->
+                <div class="hud-overlay">
+                    <div class="hud-pill" id="detected_exercise">Detecting…</div>
+                    <div class="hud-pill" id="rep_count">0</div>
+                    <div class="hud-pill" id="stage_badge" class="badge badge-idle">IDLE</div>
+                </div>
+                <div class="form-feedback-bar feedback-good" id="form_feedback">Place yourself in view</div>
+            </div>
+            <div class="control-bar">
+                <button id="btn_start" class="btn btn-primary hidden">Start</button>
+                <button id="btn_pause" class="btn btn-warning hidden">Pause</button>
+                <button id="btn_reset" class="btn btn-outline">Reset</button>
+                <button id="btn_finish" class="btn btn-primary">Finish</button>
+                <button id="btn_history" class="btn btn-outline">History</button>
+            </div>
+        </section>
+
+        <!-- Sidebar Dashboard -->
+        <aside class="sidebar">
+            <div class="telemetry-card">
+                <div class="rep-display">
+                    <div class="label">Reps</div>
+                    <div class="number" id="rep_count_display">0</div>
+                    <div class="stage-wrapper" id="stage_badge_display"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="m-label">Accuracy</div>
+                        <div class="m-val" id="accuracy_val">100%</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Calories</div>
+                        <div class="m-val" id="calories_val">0.0</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Cadence (RPM)</div>
+                        <div class="m-val" id="cadence_val">0</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="m-label">Timer</div>
+                        <div class="m-val" id="timer_val">00:00</div>
+                    </div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-header">
+                        <span>Joint Angle</span>
+                        <span id="angle_val">0°</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="angle_fill"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Summary Modal -->
+    <div id="summary_modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Workout Summary</h2>
+                <button id="btn_close_summary" class="btn btn-outline">Close</button>
+            </div>
+            <div class="summary-stats">
+                <div><strong>Exercise:</strong> <span id="sum_exercise"></span></div>
+                <div><strong>Reps:</strong> <span id="sum_reps"></span></div>
+                <div><strong>Duration:</strong> <span id="sum_duration"></span></div>
+                <div><strong>Calories:</strong> <span id="sum_calories"></span></div>
+                <div><strong>Accuracy:</strong> <span id="sum_accuracy"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="history_modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Workout History</h2>
+                <button id="btn_close_history" class="btn btn-outline">Close</button>
+            </div>
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Exercise</th>
+                            <th>Reps</th>
+                            <th>Duration</th>
+                            <th>Calories</th>
+                            <th>Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history_table_body"></tbody>
+                </table>
+            </div>
+            <button id="btn_clear_history" class="btn btn-danger">Clear All History</button>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        © 2026 FitnessAI Coach • <a href="https://github.com/asaha0678-hash/FitnessAI-Coach" target="_blank">GitHub</a>
+    </footer>
+
+    <script src="static/js/pose_math.js"></script>
+    <script src="static/js/audio_coach.js"></script>
+    <script src="static/js/exercise_tracker.js"></script>
+    <script src="static/js/main.js"></script>
+</body>
+</html>
